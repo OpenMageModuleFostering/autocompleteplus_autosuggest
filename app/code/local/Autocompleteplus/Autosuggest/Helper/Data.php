@@ -25,6 +25,11 @@ class Autocompleteplus_Autosuggest_Helper_Data extends Mage_Core_Helper_Abstract
         return $this->server_url;
     }
 
+    public function getVersion()
+    {
+        return (string)Mage::getConfig()->getNode()->modules->Autocompleteplus_Autosuggest->version;
+    }
+
     public function getConfigDataByFullPath($path){
 
         if (!$row = Mage::getSingleton('core/config_data')->getCollection()->getItemByColumnValue('path', $path)) {
@@ -230,7 +235,7 @@ class Autocompleteplus_Autosuggest_Helper_Data extends Mage_Core_Helper_Abstract
         $multistoreJson='';
         $useStoreCode=$this->getConfigDataByFullPath('web/url/use_store');
         $mage=Mage::getVersion();
-        $ext=(string) Mage::getConfig()->getNode()->modules->Autocompleteplus_Autosuggest->version;
+        $ext=Mage::helper('autocompleteplus_autosuggest')->getVersion();
         $version=array('mage'=>$mage,'ext'=>$ext);
 
         //getting site url

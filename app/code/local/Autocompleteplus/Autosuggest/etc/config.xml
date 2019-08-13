@@ -2,18 +2,12 @@
 <config>
     <modules>
         <Autocompleteplus_Autosuggest>
-            <version>2.0.7.9</version>
+            <version>2.0.8.8</version>
             <url>http://autocompleteplus.com/</url>
             <modulename>Autocompleteplus_Autosuggest</modulename>
         </Autocompleteplus_Autosuggest>
     </modules>
     <global>
-        <rewrite>
-            <!--<autocompleteplus_autosuggest_catalogsearch>
-                <from><![CDATA[#^/catalogsearch/result/#]]></from>
-                <to>/autocompleteplus/catalogsearch/</to>
-            </autocompleteplus_autosuggest_catalogsearch>-->
-        </rewrite>
         <models>
             <autocompleteplus_autosuggest>
                 <class>Autocompleteplus_Autosuggest_Model</class>
@@ -34,20 +28,12 @@
                 </entities>
             </autocompleteplus_autosuggest_mysql4>
             <catalogsearch_mysql4>
-              <rewrite>
-                  <!--<fulltext_collection>Autocompleteplus_Autosuggest_Model_Mysql4_Fulltext_Collection</fulltext_collection>-->
-              </rewrite>
             </catalogsearch_mysql4>
             <catalogsearch_resource>
                 <rewrite>
                     <fulltext_collection>Autocompleteplus_Autosuggest_Model_Resource_Fulltext_Collection</fulltext_collection>
                 </rewrite>
             </catalogsearch_resource>
-            <!--<catalogsearch>
-                <rewrite>
-                    <layer>Autocompleteplus_Autosuggest_Model_Layer</layer>
-                </rewrite>
-            </catalogsearch>-->
         </models>
         <events>
             <controller_action_postdispatch_checkout_cart_index>
@@ -118,14 +104,6 @@
                     </autocompleteplus_autosuggest>
                 </observers>
             </catalogrule_after_apply>
-            <!--<admin_session_user_login_success>
-                <observers>
-                    <autocompleteplus_autosuggest>
-                        <class>Autocompleteplus_Autosuggest_Model_Observer</class>
-                        <method>adminSessionUserLoginSuccess</method>
-                    </autocompleteplus_autosuggest>
-                </observers>
-            </admin_session_user_login_success>-->
         </events>
         <resources>
             <autosuggest_setup>
@@ -185,6 +163,13 @@
             </updates>
         </layout>
         <routers>
+            <instantsearchplus>
+                <use>standard</use>
+                <args>
+                    <module>Autocompleteplus_Autosuggest</module>
+                    <frontName>instantsearchplus</frontName>
+                </args>
+            </instantsearchplus>
             <autocompleteplus>
                 <use>standard</use>
                 <args>
@@ -202,15 +187,15 @@
         </routers>
     </frontend>
     <admin>
-      <routers>
-      <autocompleteplus>
-        <use>admin</use>
-        <args>
-          <module>Autocompleteplus_Autosuggest</module>
-          <frontName>autocompleteplus</frontName>
-        </args>
-      </autocompleteplus>
-    </routers>
+        <routers>
+            <adminhtml>
+                <args>
+                    <modules>
+                        <autocompleteplus before="Mage_Adminhtml">Autocompleteplus_Autosuggest_Adminhtml</autocompleteplus>
+                    </modules>
+                </args>
+            </adminhtml>
+        </routers>
     </admin>
     <adminhtml>
         <layout>

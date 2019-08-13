@@ -1,7 +1,14 @@
 <?php
 
 $installer = $this;
-if ($installer->getConnection()->isTableExists($this->getTable('autocompleteplus_batches'))) {
+
+// getEdition exist from version 1.12, LICENSE_EE.txt file only exists in EE edition, we need the condition to work on EE version less then 1.11.x.x
+if (!method_exists('Mage' , 'getEdition') && file_exists('LICENSE_EE.txt') && method_exists('Mage' , 'getVersion') && version_compare(Mage::getVersion(), '1.10.0.0.', '<') === true){
+    $is_table_exist = $installer->getConnection()->showTableStatus($this->getTable('autocompleteplus_batches'));
+} else {
+    $is_table_exist = $installer->getConnection()->isTableExists($this->getTable('autocompleteplus_batches'));
+}
+if ($is_table_exist) {
     try{
         $read = Mage::getSingleton('core/resource')->getConnection('core_read');
         $_tableprefix = (string)Mage::getConfig()->getTablePrefix();

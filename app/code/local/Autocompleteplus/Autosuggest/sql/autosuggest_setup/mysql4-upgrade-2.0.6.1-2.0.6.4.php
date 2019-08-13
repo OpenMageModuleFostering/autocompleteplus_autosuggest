@@ -12,12 +12,23 @@ $storeMail = $helper->getConfigDataByFullPath('autocompleteplus/config/store_ema
 $multistoreJson = $helper->getMultiStoreDataJson();
 
 // Checking config table values
-if ($installer->getConnection()->isTableExists($this->getTable('autocompleteplus_config'))) {
-    $config_arr = Mage::getModel('autocompleteplus_autosuggest/config')->getCollection()->getData();
-    $config = $config_arr[0];
+// getEdition exist from version 1.12, LICENSE_EE.txt file only exists in EE edition, we need the condition to work on EE version less then 1.11.x.x
+if (!method_exists('Mage' , 'getEdition') && file_exists('LICENSE_EE.txt') && method_exists('Mage' , 'getVersion') && version_compare(Mage::getVersion(), '1.10.0.0.', '<') === true){
+    if ($installer->getConnection()->showTableStatus($this->getTable('autocompleteplus_config'))) {
+        $config_arr = Mage::getModel('autocompleteplus_autosuggest/config')->getCollection()->getData();
+        $config = $config_arr[0];
+    } else {
+        $config = false;
+    }
 } else {
-    $config = false;
+    if ($installer->getConnection()->isTableExists($this->getTable('autocompleteplus_config'))) {
+        $config_arr = Mage::getModel('autocompleteplus_autosuggest/config')->getCollection()->getData();
+        $config = $config_arr[0];
+    } else {
+        $config = false;
+    }
 }
+
 
 $data = array();
 if ($config && isset($config['licensekey'])) {
@@ -77,7 +88,7 @@ try {
         $stemapUrl='Sitemap:http://magento.instantsearchplus.com/ext_sitemap?u='.$key.PHP_EOL;
         $robotsPath=Mage::getBaseDir().DS.'robots.txt';
         if (file_exists($robotsPath)) {
-            if (strpos($robots_content,$stemapUrl) == false){
+            if (strpos(file_get_contents($robotsPath),$stemapUrl) == false){
                 if(is_writable($robotsPath)){
                     //append sitemap
                     file_put_contents($robotsPath, $stemapUrl, FILE_APPEND | LOCK_EX);

@@ -24,7 +24,7 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
         $this->pageNum=floor(($startInd/$count));
 
         $mage=Mage::getVersion();
-        $ext=(string) Mage::getConfig()->getNode()->modules->Autocompleteplus_Autosuggest->version;
+        $ext=Mage::helper('autocompleteplus_autosuggest')->getVersion();
 
         $xml='<?xml version="1.0"?>';
         $xml.='<catalog version="'.$ext.'" magento="'.$mage.'">';
@@ -32,6 +32,9 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
         $collection=Mage::getModel('catalog/product')->getCollection();
         if(isset($storeId)&& $storeId!=''){
             $collection->addStoreFilter($storeId);
+            $store_id = $storeId;
+        } else {
+            $store_id = Mage::app()->getStore()->getStoreId();
         }
 
         //setting page+products on the page
@@ -44,11 +47,6 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
             foreach ($collection as $product){
                 $product_id_list[] = $product->getId();
             }
-            if(isset($storeId)&& $storeId!=''){
-                $store_id = $storeId;
-            } else {
-                $store_id = 1;
-            }
 
             if(isset($month_interval)&& $month_interval!=''){
                 $month_interval = $month_interval;
@@ -59,6 +57,8 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
         } else {// end - number of orderes per product section
             $orders_per_product = null;
         }
+        
+        $this->_root_category_id = Mage::app()->getStore($store_id)->getRootCategoryId();
 
         if(isset($checksum) && $checksum != ''){
             $is_checksum = $checksum;
@@ -115,7 +115,8 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
         $updates=$read->fetchAll($sql,array($from,$to));
 
         $mage=Mage::getVersion();
-        $ext=(string) Mage::getConfig()->getNode()->modules->Autocompleteplus_Autosuggest->version;
+        $ext=Mage::helper('autocompleteplus_autosuggest')->getVersion();
+        $this->_root_category_id = Mage::app()->getStore($storeId)->getRootCategoryId();        
 
         $xml='<?xml version="1.0"?>';
         $xml.='<catalog fromdatetime="'.$from.'" version="'.$ext.'" magento="'.$mage.'">';
@@ -174,46 +175,41 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
         return $xml;
     }
 
-    public function renderCatalogFromIds($count,$ids,$storeId){
+    public function renderCatalogFromIds($count,$fromId,$storeId){
 
         $this->_initCatalogCommonFields($storeId);
 
-        $mage=Mage::getVersion();
-
-        $ext=(string) Mage::getConfig()->getNode()->modules->Autocompleteplus_Autosuggest->version;
-
-        $xml='<catalog version="'.$ext.'" magento="'.$mage.'">';
+        $mage = Mage::getVersion();
+        $ext  = Mage::helper('autocompleteplus_autosuggest')->getVersion();
+        $xml  = '<catalog version="'.$ext.'" magento="'.$mage.'">';
 
         $_productCollection = Mage::getModel('catalog/product')->getCollection()
-            //->addStoreFilter($storeId)
-            //->addAttributeToSelect('*')
-            ->addAttributeToFilter('entity_id', array(
-                'from' => $ids
-            ));
-
+            ->addStoreFilter($storeId)
+            ->addAttributeToSelect('*')
+            ->addAttributeToFilter('entity_id', array('from' => $fromId));
+        
         $_productCollection->getSelect()->limit($count);
-        $_productCollection->load();
+
+        //add media gallery to collection
 
         $action= 'getfromid';
 
         foreach($_productCollection as $product){
+            if($product){
+                $id = $product->getId();
+                $lastUpdateddt = $product->getUpdatedAt();
 
-            if($product!=null){
+                $xmlAttrTemplate = 'last_updated="%s" get_by_id_status="1" action="%s" storeid="%s"';
+                $xmlAttrs = sprintf($xmlAttrTemplate,
+                    $lastUpdateddt,
+                    $action,
+                    $storeId
+                );
 
-                $id=$product->getId();
+                $xml .= $this->renderProductXmlRow($product, null, $xmlAttrs);
 
-                $productModel=Mage::getModel('catalog/product')
-                    ->setStoreId($storeId)
-                    ->load($id);
-
-                $lastUpdateddt=$productModel->getUpdatedAt();
-
-                $xmlAttrs='last_updated="'.$lastUpdateddt.'" get_by_id_status="1" action="'.$action.'"  storeid="'.$storeId.'"' ;
-
-                $xml.=$this->renderProductXmlRow($productModel,null,$xmlAttrs);
-
-            }else{
-                $xml.='<product action="'.$action.'" product="'.$id.'" get_by_id_status="0"></product>';
+            } else {
+                $xml .= '<product action="' . $action . '" product="' . $id . '" get_by_id_status="0"></product>';
             }
 
         }
@@ -223,15 +219,20 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
         return $xml;
     }
 
-    public function renderCatalogByIds($ids,$storeId){
+    /**
+     * Creates an XML representation of catalog by ids
+     * @param  array  $ids     
+     * @param  integer $storeId 
+     * @return string
+     */
+    public function renderCatalogByIds($ids, $storeId = 0)
+    {
 
         $this->_initCatalogCommonFields($storeId);
 
-        $mage=Mage::getVersion();
-
-        $ext=(string) Mage::getConfig()->getNode()->modules->Autocompleteplus_Autosuggest->version;
-
-        $xml='<catalog version="'.$ext.'" magento="'.$mage.'">';
+        $mage = Mage::getVersion();
+        $ext = Mage::helper('autocompleteplus_autosuggest')->getVersion();
+        $xml = '<catalog version="'.$ext.'" magento="'.$mage.'">';
 
         $_productCollection = Mage::getModel('catalog/product')->getCollection()
             //->addStoreFilter($storeId)
@@ -239,6 +240,8 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
             ->addAttributeToFilter('entity_id', array(
                 'in' => $ids
             ));
+        
+            $this->_root_category_id = Mage::app()->getStore($storeId)->getRootCategoryId();
 
         $action= 'getbyid';
 
@@ -267,45 +270,54 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
         return $xml;
     }
 
+    public function getCategoryMap()
+    {
+        if(!$this->_categories){
+            $categoryMap = array();
+            $categories = Mage::getModel('catalog/category')->getCollection()->load();
 
-    public function renderProductXmlRow($productModel,$orders_per_product,$xmlAttrs='action="insert"'){
-        $helper=Mage::helper('autocompleteplus_autosuggest');
-        $categoriesNames='';
-        $categories = $productModel->getCategoryCollection()
-            ->addAttributeToSelect('name');
-
-        foreach($categories as $category) {
-            $category_name = $category->getId();
-            $parent = $category->getParentCategory();
-            try{
-                $threshold = 100;
-                while ($parent){
-                    $category_name .= ':'.$parent->getId();
-                    if ($parent->getId() == Mage::app()->getStore(Mage::app()->getStore()->getStoreId())->getRootCategoryId()){
-                        break;
-                    }
-                    if ($parent->getLevel() == 0){
-                        $category_name = '';
-                        break;
-                    }
-                    $parent = $parent->getParentCategory();
-
-                    $threshold--;
-                    if ($threshold == 0)
-                        break;
-                }
-            }catch(Exception $e){
-                $category_name .= ':Exception - ' . $e->getMessage();
+            foreach($categories as $category){
+                $categoryMap[] = new Varien_Object(array(
+                    'id'=>$category->getId(),
+                    'path'=>$category->getPath(),
+                    'parent_id'=>$category->getParentId()
+                ));
             }
-            if ($category_name != ''){
-                $categoriesNames .= $category_name . ';';
-            }
+
+            $this->_categories = $categoryMap;
         }
 
-        $price       =$this->_getPrice($productModel);
-        $sku         =$productModel->getSku();
-        $stock_status   =$productModel->isInStock();
-        $stockItem      = $productModel->getStockItem();
+        return $this->_categories;
+    }
+
+    public function getCategoryPathsByProduct(Mage_Catalog_Model_Product $product)
+    {
+        $productCategories = $product->getCategoryIds();
+		$root_category_id = $this->_root_category_id;
+        $paths = array_map(function($category) use ($productCategories, $root_category_id) {
+            if(in_array($category->getId(), $productCategories)){
+                $path = explode('/', $category->getPath());
+                //we don't want the root category for the entire site
+                array_shift($path);
+                if ($root_category_id && is_array($path) && $path[0] != $root_category_id){
+                    return array();
+                }
+                //we want more specific categories first
+                return implode(':', array_reverse($path));
+            }
+        }, $this->getCategoryMap());
+
+        return array_filter($paths);
+    }
+
+    public function renderProductXmlRow($productModel,$orders_per_product,$xmlAttrs='action="insert"')
+    {
+        $helper       = Mage::helper('autocompleteplus_autosuggest');
+        $categories   = $this->getCategoryPathsByProduct($productModel);
+        $price        = $this->_getPrice($productModel);
+        $sku          = $productModel->getSku();
+        $stock_status = $productModel->isInStock();
+        $stockItem    = $productModel->getStockItem();
 
         if($stockItem){
             if($stockItem->getIsInStock() && $stock_status){
@@ -346,11 +358,11 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
             $productUrl = Mage::helper('catalog/product')->getProductUrl($productModel->getId());
         }
 
-        $prodId           =$productModel->getId();
-        $prodDesc         =$productModel->getDescription();
-        $prodShortDesc    =$productModel->getShortDescription();
-        $prodName         =$productModel->getName();
-        $visibility       =$productModel->getVisibility();
+        $prodId        = $productModel->getId();
+        $prodDesc      = $productModel->getDescription();
+        $prodShortDesc = $productModel->getShortDescription();
+        $prodName      = $productModel->getName();
+        $visibility    = $productModel->getVisibility();
 
         if(defined('Mage_Catalog_Model_Product_Status::STATUS_ENABLED')){
             if ($productModel->getStatus() == Mage_Catalog_Model_Product_Status::STATUS_ENABLED){
@@ -383,8 +395,10 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
 
         }catch(Exception $e){
             $prodImage='';
+            $product_base_image = '';
         }
-
+        
+        $grouped_children_ids = array();
         if($productModel->getTypeID()=='configurable'){
             $configurableAttributes=$this->_getConfigurableAttributes($productModel);
 
@@ -401,6 +415,10 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
                 $is_in_stock_child_exist = false; 
                 foreach($configurableChildren as $child_product){
                     if ($child_product->getStockItem()->getIsInStock()){
+                        if (method_exists($child_product, 'isSaleable') && !$child_product->isSaleable()){
+                            // the simple product is probably disabled (because its in stock)
+                            continue;
+                        }
                         $is_in_stock_child_exist = true;
                         break;
                     }
@@ -416,6 +434,29 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
             }catch(Exception $e){
                 $priceRange='price_min="" price_max=""';
             }
+        } else if ($productModel->getTypeID() == 'grouped'){
+            $grouped_children = $this->_getGroupedChildren($productModel);
+            foreach($grouped_children as $child_product){
+                $grouped_children_ids[] = $child_product->getId();
+            }
+            // getting sellable option for the grouped product
+            if ($sell){     // Grouped is in stock
+                $is_in_stock_child_exist = false;
+                foreach($grouped_children as $child_product){
+                    if ($child_product->getStockItem()->getIsInStock()){
+                        if (method_exists($child_product, 'isSaleable') && !$child_product->isSaleable()){
+                            continue;
+                        }
+                        $is_in_stock_child_exist = true;
+                        break;
+                    }
+                }  
+                if (!$is_in_stock_child_exist){
+                    # Configurable is in stock, but has no in stock children
+                    $sell = 0;
+                }                
+            }
+            $priceRange='price_min="" price_max=""';
         } else if ($productModel->getTypeID() == 'simple'){
             $simple_product_parents = $this->_getSimpleProductParent($productModel);
             $priceRange='price_min="" price_max=""';
@@ -465,10 +506,17 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
                 if($attr->getfrontend_input()=='select'){
                     if($productModel->getData($action)){
                         if (method_exists($productModel, 'getAttributeText')){
-                            $row.='<attribute is_filterable="'.$is_filterable.'" name="'.$attr->getAttributeCode().'">
-                                    <attribute_values><![CDATA['.$productModel->getAttributeText($action).']]></attribute_values>
-                                    <attribute_label><![CDATA['.$attribute_label.']]></attribute_label>
-                                   </attribute>';
+							try{
+								$row.='<attribute is_filterable="'.$is_filterable.'" name="'.$attr->getAttributeCode().'">
+											<attribute_values><![CDATA['.$productModel->getAttributeText($action).']]></attribute_values>
+											<attribute_label><![CDATA['.$attribute_label.']]></attribute_label>
+									   </attribute>';
+							} catch(Exception $e){
+								$row.='<attribute is_filterable="'.$is_filterable.'" name="'.$attr->getAttributeCode().'">
+											<attribute_values><![CDATA['.$productModel->getData($action).']]></attribute_values>
+											<attribute_label><![CDATA['.$attribute_label.']]></attribute_label>
+										</attribute>';
+							} 
                         } else {
                             $row.='<attribute is_filterable="'.$is_filterable.'" name="'.$attr->getAttributeCode().'">
                                     <attribute_values><![CDATA['.$productModel->getData($action).']]></attribute_values>
@@ -507,16 +555,80 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
                     }
                 }
             }
-
+            
             if($productModel->getTypeID()=='configurable' && count($configurableAttributes)>0){
+                $configural_attributes = array();
                 foreach($configurableAttributes as $attrName=>$confAttrN){
                     if(is_array($confAttrN) && array_key_exists('values',$confAttrN)){
+                        $configural_attributes[] = $attrName;
                         $values=implode(' , ',$confAttrN['values']);
                         $row.='<attribute is_configurable="1" is_filterable="'.$confAttrN['is_filterable'].'" name="'.$attrName.'"><![CDATA['.$values.']]></attribute>';
                     }
                 }
+                $simple_products_price = $this->_getSimpleProductsPriceOfConfigurable($productModel, $configurableChildren);
 
+                if (!empty($configural_attributes)){
+                    $product_variation = '<variants>';
+                    try{
+                        foreach($configurableChildren as $child_product){
+                            if (!in_array($productModel->getStoreId(), $child_product->getStoreIds())){
+                                continue;
+                            }
+                            
+                            $is_variant_in_stock = ($child_product->getStockItem()->getIsInStock()) ? 1 : 0;
+                            
+                            if (method_exists($child_product, 'isSaleable')){
+                                $is_variant_sellable = ($child_product->isSaleable()) ? 1 : 0;
+                            } else {
+                                $is_variant_sellable = '';
+    //                             $is_variant_sellable = (Mage::getModel('catalog/product')
+    //                                                     ->setStore($productModel->getStoreId())
+    //                                                     ->setStoreId($productModel->getStoreId())
+    //                                                     ->load($child_product->getId())
+    //                                                     ->getStatus() == Mage_Catalog_Model_Product_Status::STATUS_ENABLED);
+                            }
+                            
+                            if (method_exists($child_product, 'getVisibility')){
+                                $is_variant_visible = ($child_product->getVisibility()) ? 1 : 0;
+                            } else {
+                                $is_variant_visible = '';
+    //                             $is_variant_visible = (Mage::getModel('catalog/product')
+    //                                                    ->setStore($productModel->getStoreId())
+    //                                                    ->setStoreId($productModel->getStoreId())
+    //                                                    ->load($child_product->getId())
+    //                                                    ->getVisibility());
+                            }
+                            
+                            $variant_price = (array_key_exists($child_product->getId(), $simple_products_price)) ?
+                                                $simple_products_price[$child_product->getId()] : '';
+                            
+                            $product_variation .= '<variant id="'.$child_product->getId().'" type="'.$child_product->getTypeID().
+                                                    '" visibility="'.$is_variant_visible.'" is_in_stock="'.$is_variant_in_stock.'" is_seallable="'.$is_variant_sellable.'" price="'.$variant_price.'">';
+                            $product_variation .= '<name><![CDATA['.$child_product->getName().']]></name>';
+                            
+                            $attributes = $child_product->getAttributes();
+                            foreach ($attributes as $attribute) {
+                                if (!$attribute['is_configurable'] || !in_array($attribute['store_label'], $configural_attributes)){ // || !$attribute->getIsVisibleOnFront()
+                                    continue;
+                                }
+                                    
+                                $product_variation .= '<variant_attribute is_configurable="1" is_filterable="'.$attribute->getis_filterable().
+                                                        '" name="'.$attribute['store_label'].'" name_code="'.$attribute->getId().
+                                                        '" value_code="'.$child_product->getData($attribute->getAttributeCode()).
+                                                        '"><![CDATA['.$attribute->getFrontend()->getValue($child_product).
+                                                        ']]></variant_attribute>';
+                            }
+                            $product_variation .= '</variant>';
+                        }
+                    } catch(Exception $e ){
+                    } 
+                    $product_variation .= '</variants>';
+                    $row.=$product_variation;
+                }
+                
                 $row.='<simpleproducts><![CDATA['.implode(',',$configurable_children_ids).']]></simpleproducts>';
+            } else if ($productModel->getTypeID()=='grouped' && count($grouped_children_ids)>0){
+                $row.='<simpleproducts><![CDATA['.implode(',',$grouped_children_ids).']]></simpleproducts>';
             }
             
             if($productModel->getTypeID() == 'simple'){
@@ -524,7 +636,7 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
             }
         }
 
-        $row.='<categories><![CDATA['.$categoriesNames.']]></categories>';
+        $row.='<categories><![CDATA[' . implode(';', $categories) . ']]></categories>';
         $row.='</product>';
         return $helper->escapeXml($row);
     }
@@ -793,6 +905,10 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
         return $childProducts;
     }
     
+    private function _getGroupedChildren($product){
+        return $product->getTypeInstance(true)->getAssociatedProducts($product);
+    }
+    
     private function _getSimpleProductParent($product){
         try{
             $parent_products_ids_list = Mage::getModel('catalog/product_type_configurable')
@@ -816,7 +932,6 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
                 $attributeFull = Mage::getModel('eav/config')->getAttribute('catalog_product', $productAttribute['attribute_code']);
 
                 foreach ($productAttribute['values'] as $attribute) {
-
                     $attributeOptions[$productAttribute['store_label']]['values'][] = $attribute['store_label'];
 
                 }
@@ -872,6 +987,41 @@ class Autocompleteplus_Autosuggest_Model_Catalog extends Mage_Core_Model_Abstrac
         }
         $priceRange='price_min="'.$min.'" price_max="'.$max.'"';
         return $priceRange;
+    }
+    
+    private function _getSimpleProductsPriceOfConfigurable($product, $configurable_children){
+        $simple_products_price = array();
+        $pricesByAttributeValues = array();
+        $attributes = $product->getTypeInstance(true)->getConfigurableAttributes($product);
+        $basePrice = $product->getFinalPrice();
+        $items = $attributes->getItems();
+        if (is_array($items)){
+            foreach ($items as $attribute){
+                $prices = $attribute->getPrices();
+                if (is_array($prices)){
+                    foreach ($prices as $price){
+                        if ($price['is_percent']){ //if the price is specified in percents
+                            $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'] * $basePrice / 100;
+                        }
+                        else { //if the price is absolute value
+                            $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'];
+                        }
+                    }
+                }
+            }
+        }
+        
+        foreach ($configurable_children as $sProduct){
+            $totalPrice = $basePrice;
+            foreach ($attributes as $attribute){
+                $value = $sProduct->getData($attribute->getProductAttribute()->getAttributeCode());
+                if (isset($pricesByAttributeValues[$value])){
+                    $totalPrice += $pricesByAttributeValues[$value];
+                }
+            }
+            $simple_products_price[$sProduct->getId()] = $totalPrice;
+        }
+        return $simple_products_price;
     }
 
     private function _getOrdersPerProduct($store_id, $product_id_list, $month_interval){

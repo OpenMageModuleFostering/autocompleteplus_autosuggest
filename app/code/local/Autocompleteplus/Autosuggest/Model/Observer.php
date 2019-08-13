@@ -123,7 +123,7 @@ class Autocompleteplus_Autosuggest_Model_Observer extends Mage_Core_Model_Abstra
         $key    =$helper->getUUID();
 
         $mage=Mage::getVersion();
-        $ext=(string) Mage::getConfig()->getNode()->modules->Autocompleteplus_Autosuggest->version;
+        $ext=Mage::helper('autocompleteplus_autosuggest')->getVersion();
 
         $xml='<?xml version="1.0"?>';
 
@@ -177,6 +177,13 @@ class Autocompleteplus_Autosuggest_Model_Observer extends Mage_Core_Model_Abstra
 
         $dt     = strtotime('now');
         //$mysqldate = date( 'Y-m-d h:m:s', $dt );
+        
+        $simple_product_parents = array();
+        if ($product->getTypeID() == 'simple'){
+            $simple_product_parents = Mage::getModel('catalog/product_type_configurable')
+                                        ->getParentIdsByChild($product->getId());
+            
+        }
 
         try{
             $_tableprefix = (string)Mage::getConfig()->getTablePrefix();
@@ -214,6 +221,23 @@ class Autocompleteplus_Autosuggest_Model_Observer extends Mage_Core_Model_Abstra
                     }
                 } catch (Exception $e){
                     Mage::log('checksum failed - ' . $e->getMessage(), null, 'autocompleteplus.log');
+                }
+                
+                // trigger update for simple product's configurable parent
+                if (!empty($simple_product_parents)){   // simple product has configural parent
+                    foreach ($simple_product_parents as $configurable_product){
+                        $sqlFetch = 'SELECT * FROM '. $_tableprefix.'autocompleteplus_batches WHERE product_id = ? AND store_id=?';
+                        $updates = $read->fetchAll($sqlFetch, array($configurable_product, $product_store));
+                        if (!$updates || (count($updates) == 0) || $updates[0]['action'] != 'remove'){
+                            if($updates && count($updates) != 0){
+                                $sql = 'UPDATE '. $_tableprefix.'autocompleteplus_batches SET update_date=?,action=? WHERE product_id = ? AND store_id=?';
+                                $write->query($sql, array($dt, "update", $configurable_product, $product_store));
+                            } else {
+                                $sql = 'INSERT INTO '. $_tableprefix.'autocompleteplus_batches (product_id,store_id,update_date,action,sku) VALUES (?,?,?,?,?)';
+                                $write->query($sql, array($configurable_product, $product_store, $dt, "update", 'ISP_NO_SKU'));
+                            }
+                        }
+                    }
                 }
             }
 
@@ -615,13 +639,15 @@ class Autocompleteplus_Autosuggest_Model_Observer extends Mage_Core_Model_Abstra
             } else {
                 $quantity = $item->getQty();
             }
-            $items[] = array(
-                'product_id'  =>$item->getProduct()->getId(),
-                'price'       =>$item->getProduct()->getFinalPrice(),
-                'quantity'    =>$quantity,
-                'currency'    =>Mage::app()->getStore()->getCurrentCurrencyCode(),
-                'attribution' =>$item->getAddedFromSearch()
-            );
+            if (is_object($item->getProduct())){    // Fatal error fix: Call to a member function getId() on a non-object
+                $items[] = array(
+                    'product_id'  =>$item->getProduct()->getId(),
+                    'price'       =>$item->getProduct()->getFinalPrice(),
+                    'quantity'    =>$quantity,
+                    'currency'    =>Mage::app()->getStore()->getCurrentCurrencyCode(),
+                    'attribution' =>$item->getAddedFromSearch()
+                );
+            }
         }
 
         return $items;

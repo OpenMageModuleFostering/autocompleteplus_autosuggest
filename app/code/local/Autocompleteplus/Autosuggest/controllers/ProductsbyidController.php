@@ -1,7 +1,6 @@
 <?php
 /**
  * InstantSearchPlus (Autosuggest)
-
  *
  * NOTICE OF LICENSE
  *
@@ -16,55 +15,57 @@
  */
 class Autocompleteplus_Autosuggest_ProductsbyidController extends Mage_Core_Controller_Front_Action
 {
-    public function getbyidAction(){
+    const PHP_SCRIPT_TIMEOUT = 1800;
+    const MISSING_PARAMETER = 767;
+    const STATUS_FAILURE = 'failure';
 
-        set_time_limit (1800);
-
-        $post = $this->getRequest()->getParams();
-
-        if(!isset($post['id'])){
-            $returnArr=array(
-                'status'=>'failure',
-                'error_code'=>'767',
-                'error_details'=>'The "id" parameter is mandatory'
-            );
-            echo json_encode($returnArr);
-            die;
-        }
-
-        $ids     = $post['id'];
-
-        $storeId     = isset($post['store']) ? $post['store']  : 1;
-
-        $catalogModel=Mage::getModel('autocompleteplus_autosuggest/catalog');
-
-        $idsArr=explode(',',$ids);
-
-        $xml=$catalogModel->renderCatalogByIds($idsArr,$storeId);
-
-        header('Content-type: text/xml');
-        echo $xml;
-        die;
+    public function preDispatch()
+    {
+        parent::preDispatch();
+        set_time_limit(self::PHP_SCRIPT_TIMEOUT);
     }
 
-    public function getfromidAction(){
+    public function getbyidAction()
+    {
+        $request  = $this->getRequest();
+        $response = $this->getResponse();
+        $storeId  = $request->getParam('store', 1);
+        $id  = $request->getParam('id');
 
-        set_time_limit (1800);
+        if(!$id){
+            $returnArr = array(
+                'status'        => self::STATUS_FAILURE,
+                'error_code'    => self::MISSING_PARAMETER,
+                'error_details' => $this->__('The "id" parameter is mandatory')
+            );
+            $response->setHeader('Content-type', 'application/json');
+            $response->setHttpResponseCode(400);
+            $response->setBody(json_encode($returnArr));
+            return;
+        }
 
-        $post = $this->getRequest()->getParams();
+        $ids = explode(',', $id);
+        $catalogModel = Mage::getModel('autocompleteplus_autosuggest/catalog');
+        $xml = $catalogModel->renderCatalogByIds($ids, $storeId);
 
-        $from_id     = isset($post['id']) ? $post['id']  : 0;
+        $response->clearHeaders();
+        $response->setHeader('Content-type', 'text/xml');
+        $response->setBody($xml);
+    }
 
-        $storeId     = isset($post['store']) ? $post['store']  : 1;
+    public function getfromidAction()
+    {
+        $request  = $this->getRequest();
+        $response = $this->getResponse();
+        $fromId   = $request->getParam('id', 0);
+        $storeId  = $request->getParam('store', 1);
+        $count    = $request->getParam('count', 100);
 
-        $count        = isset($post['count']) ? $post['count']  : 100;
+        $catalogModel = Mage::getModel('autocompleteplus_autosuggest/catalog');
+        $xml = $catalogModel->renderCatalogFromIds($count, $fromId, $storeId);
 
-        $catalogModel=Mage::getModel('autocompleteplus_autosuggest/catalog');
-
-        $xml=$catalogModel->renderCatalogFromIds($count,$from_id,$storeId);
-
-        header('Content-type: text/xml');
-        echo $xml;
-        die;
+        $response->clearHeaders();
+        $response->setHeader('Content-type', 'text/xml');
+        $response->setBody($xml);
     }
 }

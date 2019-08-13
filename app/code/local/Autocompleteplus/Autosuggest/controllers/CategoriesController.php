@@ -24,7 +24,7 @@ class Autocompleteplus_Autosuggest_CategoriesController extends Mage_Core_Contro
         echo json_encode($categories);
     }
 
-    private function nodeToArray(Varien_Data_Tree_Node $node , $mediaUrl, $baseUrl)
+    private function nodeToArray(Varien_Data_Tree_Node $node , $mediaUrl, $baseUrl, $store)
     {
         $result = array();
 
@@ -52,14 +52,17 @@ class Autocompleteplus_Autosuggest_CategoriesController extends Mage_Core_Contro
         $result['children'] = array();
         
         if (method_exists('Mage' , 'getEdition') && Mage::getEdition() == Mage::EDITION_COMMUNITY){
-            $result['url_path'] = $baseUrl.$node->getData('url_path');
+//             $result['url_path'] = $baseUrl.$node->getData('url_path');
+            
+            $category = Mage::getModel('catalog/category')->setStoreId($store)->load($node->getId());
+            $result['url_path'] = $category->getUrl();
         } else {
-            $category = Mage::getModel('catalog/category')->load($node->getId());
+            $category = Mage::getModel('catalog/category')->setStoreId($store)->load($node->getId());
             $result['url_path'] = $category->getUrl();
         }
           
         foreach ($node->getChildren() as $child) {
-            $result['children'][] = $this->nodeToArray($child,$mediaUrl,$baseUrl);
+            $result['children'][] = $this->nodeToArray($child,$mediaUrl,$baseUrl, $store);
         }
 
         return $result;
@@ -102,7 +105,7 @@ class Autocompleteplus_Autosuggest_CategoriesController extends Mage_Core_Contro
         $mediaUrl= Mage::getBaseUrl(Mage_Core_Model_Store::URL_TYPE_MEDIA);
         $baseUrl= Mage::getBaseUrl(Mage_Core_Model_Store::URL_TYPE_WEB);
 
-        return $this->nodeToArray($root,$mediaUrl,$baseUrl);
+        return $this->nodeToArray($root,$mediaUrl,$baseUrl, $store);
 
     }
 

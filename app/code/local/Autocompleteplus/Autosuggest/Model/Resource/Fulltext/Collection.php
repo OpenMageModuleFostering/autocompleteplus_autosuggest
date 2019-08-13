@@ -90,7 +90,7 @@ class Autocompleteplus_Autosuggest_Model_Resource_Fulltext_Collection extends Ma
                 $url_domain = 'http://magento.instantsearchplus.com/ma_search';
             }
                 
-            $extension_version = (string)Mage::getConfig()->getNode()->modules->Autocompleteplus_Autosuggest->version;
+            $extension_version = Mage::helper('autocompleteplus_autosuggest')->getVersion();
             $site_url = $helper->getConfigDataByFullPath('web/unsecure/base_url');
             $url = $url_domain.'?q='.urlencode($query).'&p=1&products_per_page=1000&v='.$extension_version.'&store_id='.$storeId.'&UUID='.$key.'&h='.$site_url;
 

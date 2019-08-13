@@ -29,8 +29,11 @@ class Autocompleteplus_Autosuggest_Block_Inject extends Mage_Checkout_Block_Cart
             if(array_key_exists('adminhtml', $_COOKIE)){
                 //get session path and add dir seperator and content field of cookie as data name with magento "sess_" prefix
                 $sessionFilePath = Mage::getBaseDir('session').DS.'sess_'.$_COOKIE['adminhtml'];
+                if (!file_exists($sessionFilePath)){
+                    return false;
+                }
                 //write content of file in var
-                $sessionFile = file_get_contents($sessionFilePath);
+                $sessionFile = @file_get_contents($sessionFilePath);
 
                 //save old session
                 $oldSession = $_SESSION;
@@ -71,7 +74,7 @@ class Autocompleteplus_Autosuggest_Block_Inject extends Mage_Checkout_Block_Cart
      */
     public function getVersion()
     {
-        return (string)Mage::getConfig()->getNode()->modules->Autocompleteplus_Autosuggest->version;
+        return Mage::helper('autocompleteplus_autosuggest')->getVersion();
     }
 
     /**

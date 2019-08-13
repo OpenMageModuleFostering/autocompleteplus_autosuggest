@@ -2,7 +2,6 @@
 
 /**
  * InstantSearchPlus (Autosuggest)
-
  *
  * NOTICE OF LICENSE
  *
@@ -16,85 +15,50 @@
  * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
  */
 
-
-
 /**
-
  * Used in creating options for Yes|No config value selection
-
- *
-
  */
 
 class Autocompleteplus_Autosuggest_Block_Adminhtml_Button extends Mage_Adminhtml_Block_System_Config_Form_Field
 {
 
-     /*
-
-     * Set template
-
+    /**
+     * Set Template
+     * @return void
      */
-
     protected function _construct()
-
     {
-
         parent::_construct();
-
         $this->setTemplate('autocompleteplus/system/config/button.phtml');
-
     }
 
- 
-
     /**
-
      * Return element html
-
      *
-
      * @param  Varien_Data_Form_Element_Abstract $element
-
      * @return string
-
      */
-
     protected function _getElementHtml(Varien_Data_Form_Element_Abstract $element)
-
     {
 
         return $this->_toHtml();
 
     }
 
-    
-
-    public function getUUID(){
-
-        try{
-
+    public function getUUID()
+    {
+        try {
             $helper=Mage::helper('autocompleteplus_autosuggest');
-
             return $helper->getUUID();
-
-
-
-        }catch(Exception $e){
-
+        } catch(Exception $e) {
             Mage::log($e->getMessage(),null,'autocomplete.log');
-
         }
-
     }
 
     /**
-
      * Return ajax url for button
-
      *
-
      * @return string
-
      */
 
     public function getAjaxCheckUrl()
@@ -104,32 +68,21 @@ class Autocompleteplus_Autosuggest_Block_Adminhtml_Button extends Mage_Adminhtml
     }
 
     /**
-
      * Generate button html
-
      *
-
      * @return string
-
      */
     public function getButtonHtml()
     {
-
         $button = $this->getLayout()->createBlock('adminhtml/widget_button')
 
             ->setData(array(
-
-            'id'        => 'autocompleteplus_button',
-
-            'label'     => $this->helper('adminhtml')->__('Update'),
-
-            'onclick'   => 'javascript:updateautocomplete(); return false;'
-
-        ));
+                'id'        => 'autocompleteplus_button',
+                'label'     => $this->helper('adminhtml')->__('Update'),
+                'onclick'   => 'javascript:updateautocomplete(); return false;'
+            ));
 
         return $button->toHtml();
     }
-
-
 
 }

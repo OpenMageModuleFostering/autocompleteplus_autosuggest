@@ -129,7 +129,7 @@ class Autocompleteplus_Autosuggest_ProductsController extends Mage_Core_Controll
 
     public function versAction(){
         $mage = Mage::getVersion();
-        $ext = (string) Mage::getConfig()->getNode()->modules->Autocompleteplus_Autosuggest->version;
+        $ext =  Mage::helper('autocompleteplus_autosuggest')->getVersion();
         try{
             $num_of_products = Mage::getModel('catalog/product')->getCollection()
                 ->addStoreFilter(Mage::app()->getStore()->getStoreId())
