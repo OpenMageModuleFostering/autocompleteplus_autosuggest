@@ -1,16 +1,19 @@
 {
-    "name": "OpenMageModuleFostering/autocompleteplus_autosuggest",
+    "name": "OpenMageModuleFostering\/autocompleteplus_autosuggest",
     "type": "magento-module",
     "license": "AC+",
     "homepage": "",
     "description": "AutoComplete+ InstantSearch",
     "authors": [
-    {
-        "name": "Adar",
-        "email": "magento@autocompleteplus.com"
-    }
-],
+        {
+            "name": "Adar",
+            "email": "magento@autocompleteplus.com"
+        }
+    ],
     "suggest": {
-        "magento-hackathon/magento-composer-installer": "*"
-    }
+        "magento-hackathon\/magento-composer-installer": "*"
+    },
+    "keywords": [
+        "openmage-module"
+    ]
 }
